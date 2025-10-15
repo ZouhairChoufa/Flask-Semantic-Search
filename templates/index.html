@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recherche Sémantique Avancée</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="{{ 'results-state' if results else 'initial-state' }}">
+
+    <div id="loader-overlay" class="loader-overlay">
+        <div class="loader-content">
+            <div class="spinner"></div>
+            <p>Lancement de l'indexation... <br>Cette opération peut prendre plusieurs minutes.</p>
+        </div>
+    </div>
+
+    <div class="wrapper {{ 'results-state' if results else 'initial-state' }}">
+        <header class="search-header">
+            <a href="{{ url_for('search_interface') }}" class="logo-link">
+                <svg class="logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="50" cy="50" r="45" stroke="#2563EB" stroke-width="10" fill="none"/>
+                    <circle cx="42" cy="42" r="18" stroke="#2563EB" stroke-width="10" fill="none"/>
+                    <line x1="55" y1="55" x2="75" y2="75" stroke="#2563EB" stroke-width="10" stroke-linecap="round"/>
+                </svg>
+            </a>
+            
+            <form method="post" action="{{ url_for('search_interface') }}" class="search-form-container">
+                <svg class="search-icon-left" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clip-rule="evenodd" /></svg>
+                <input type="text" name="query" value="{{ query }}" placeholder="Ex: film de Nolan après 2010, chercheur français en physique..." autofocus>
+                <button type="submit" class="search-button" aria-label="Rechercher">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 10a.75.75 0 01.75-.75h10.638L10.23 5.28a.75.75 0 011.04-1.08l5.5 5.25a.75.75 0 010 1.08l-5.5 5.25a.75.75 0 11-1.04-1.08l4.158-3.96H3.75A.75.75 0 013 10z" clip-rule="evenodd" /></svg>
+                </button>
+            </form>
+
+            {% if not results %}
+            <div class="index-button-container">
+                <a href="{{ url_for('indexing_status_page') }}" id="btn-indexer" class="index-button">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.898 20.572L16.5 21.75l-.398-1.178a3.375 3.375 0 00-2.455-2.456L12.5 18l1.178-.398a3.375 3.375 0 002.455-2.456L16.5 14.25l.398 1.178a3.375 3.375 0 002.456 2.456L20.25 18l-1.178.398a3.375 3.375 0 00-2.456 2.456z" />
+                    </svg>
+                    <span>Lancer ou Mettre à jour l'Index</span>
+                </a>
+            </div>
+            {% endif %}
+        </header>
+
+        {% if results is not none %}
+            <div class="results-count-container">
+                {% if results.total > 0 %}
+                    <div class="results-count success">
+                        Environ {{ results.total }} résultat(s) trouvé(s).
+                    </div>
+                {% else %}
+                    <div class="results-count error">
+                        Aucun résultat trouvé pour "{{ query }}".
+                    </div>
+                {% endif %}
+            </div>
+
+            <main class="results-section">
+                {% for result in results.hits %}
+                    <div class="result">
+                        <div class="result-header">
+                            {% if result._source.image %}
+                                <img src="{{ result._source.image }}" class="result-image" alt="Image de {{ result._source.name }}" onerror="this.style.display='none'">
+                            {% else %}
+                                <div class="result-image" style="display: flex; align-items: center; justify-content: center; background-color: #f1f3f4; color: #80868b; font-weight: bold;">
+                                    {{ result._source.name[0] | upper if result._source.name else '?' }}
+                                </div>
+                            {% endif %}
+                            <div class="result-title-block">
+                                <h3><a href="{{ result._source.uri }}" target="_blank" rel="noopener noreferrer">{{ result._source.name }}</a></h3>
+                                <div class="result-uri">{{ result._source.uri }}</div>
+                            </div>
+                        </div>
+                        <div class="result-description">
+                            <p>{{ result._source.description | default('', true) }}</p>
+                            <div class="result-details">
+                                {% if result._source.type == 'chercheur' %}
+                                    {% if result._source.details.domain %}<p><strong>Domaine :</strong> {{ result._source.details.domain }}</p>{% endif %}
+                                    {% if result._source.details.nationality %}<p><strong>Nationalité :</strong> {{ result._source.details.nationality }}</p>{% endif %}
+                                    {% if result._source.details.birth_date %}<p><strong>Naissance :</strong> {{ result._source.details.birth_date }}</p>{% endif %}
+                                {% elif result._source.type == 'film' %}
+                                    {% if result._source.details.director %}<p><strong>Réalisateur :</strong> {{ result._source.details.director }}</p>{% endif %}
+                                    {% if result._source.details.genre %}<p><strong>Genre :</strong> {{ result._source.details.genre }}</p>{% endif %}
+                                    {% if result._source.details.release_date %}<p><strong>Sortie :</strong> {{ result._source.details.release_date }}</p>{% endif %}
+                                {% elif result._source.type == 'pays' %}
+                                    {% if result._source.details.capital %}<p><strong>Capitale :</strong> {{ result._source.details.capital }}</p>{% endif %}
+                                    {% if result._source.details.continent %}<p><strong>Continent :</strong> {{ result._source.details.continent }}</p>{% endif %}
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+
+                {% if total_pages > 1 %}
+                <div class="pagination">
+                    {% if page > 1 %}
+                        <a href="{{ url_for('search_interface', query=query, page=page - 1) }}">&laquo; Précédent</a>
+                    {% endif %}
+                    
+                    <span>Page {{ page }} sur {{ total_pages }}</span>
+
+                    {% if page < total_pages %}
+                        <a href="{{ url_for('search_interface', query=query, page=page + 1) }}">Suivant &raquo;</a>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </main>
+        {% endif %}
+    </div>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

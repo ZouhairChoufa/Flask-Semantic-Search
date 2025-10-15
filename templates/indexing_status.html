@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Indexation en cours...</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        body {
+            display: flex; justify-content: center; align-items: center;
+            height: 100vh; margin: 0; background-color: #f8f9fa;
+        }
+        .status-container { text-align: center; font-family: sans-serif; }
+        .spinner {
+            border: 8px solid #f3f3f3; border-top: 8px solid #2563EB;
+            border-radius: 50%; width: 60px; height: 60px;
+            animation: spin 1s linear infinite; margin: 0 auto 20px auto;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        #status-message { font-size: 1.2em; color: #333; }
+    </style>
+</head>
+<body>
+    <div class="status-container">
+        <div id="spinner" class="spinner"></div>
+        <p id="status-message">Lancement de l'indexation...</p>
+    </div>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const statusMessageElement = document.getElementById('status-message');
+        const spinnerElement = document.getElementById('spinner');
+        let intervalId;
+
+        function checkStatus() {
+            const url = '/check-status?t=' + new Date().getTime();
+
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    statusMessageElement.textContent = data.message;
+
+                    if (data.is_complete) {
+                        clearInterval(intervalId); 
+                        spinnerElement.style.display = 'none';
+
+                        setTimeout(() => {
+                            window.location.href = "{{ url_for('search_interface') }}";
+                        }, 3000); 
+                    }
+                }).catch(err => {
+                    console.error("Erreur de vérification du statut:", err);
+                    statusMessageElement.textContent = "Erreur de communication avec le serveur.";
+                    clearInterval(intervalId);
+                });
+        }
+
+        fetch('/start-indexing', { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'started' || data.status === 'already_running') {
+                    intervalId = setInterval(checkStatus, 2000);
+                } else {
+                    statusMessageElement.textContent = "Erreur lors du démarrage : " + data.message;
+                    spinnerElement.style.display = 'none';
+                }
+            }).catch(err => {
+                console.error("Erreur de démarrage de l'indexation:", err);
+                statusMessageElement.textContent = "Impossible de démarrer le processus d'indexation.";
+                spinnerElement.style.display = 'none';
+            });
+    });
+</script>
+</body>
+</html>
