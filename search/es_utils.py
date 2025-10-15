@@ -186,14 +186,6 @@ def search_in_elasticsearch(query_text, from_offset=0, size=10):
     parser = QueryParser(query_text)
     must_clauses, filter_clauses = parser.parse()
 
-# filter_clauses : Contient les filtres absolus. Par exemple, le mot "film" se traduit par un filtre qui dit : 
-# "Ne me montre que les documents où type est film"
-
-# must_clauses : Contient les critères obligatoires. Par exemple, "de Nolan" se traduit par une clause qui dit : 
-# "Le document doit avoir details.director qui correspond à Nolan".
-
-    # 2. Construire une clause "should" pour la recherche textuelle globale.
-    #    Elle utilise la requête originale pour la pertinence.
     should_clauses = [
         {
             "multi_match": {
@@ -207,11 +199,11 @@ def search_in_elasticsearch(query_text, from_offset=0, size=10):
                     "details.nationality"
                 ],
                 "type": "best_fields",
-                "fuzziness": "AUTO" #fuzziness: "AUTO" : Permet de tolérer les petites fautes de frappe.
+                "fuzziness": "AUTO"
             }
         },
         {
-            "multi_match": { # Un boost supplémentaire pour la phrase exacte dans le nom
+            "multi_match": { 
                 "query": query_text,
                 "fields": ["name"],
                 "type": "phrase",
@@ -219,19 +211,13 @@ def search_in_elasticsearch(query_text, from_offset=0, size=10):
             }
         }
     ]
-    # La recherche large (multi_match principal) :
-    # Elle recherche votre texte dans une liste de champs : 
-    # name, description, et les détails comme director, genre, etc.
 
-
-    # 3. Assembler la requête finale
     search_query = {
         "query": {
             "bool": {
-                "must": must_clauses,      # Critères obligatoires (ex: réalisateur)
-                "filter": filter_clauses,    # Filtres stricts (ex: type='pays')
-                "should": should_clauses,    # Critères de pertinence (la recherche textuelle)
-                # Si aucun critère obligatoire n'est trouvé, au moins un critère de pertinence doit correspondre.
+                "must": must_clauses,      
+                "filter": filter_clauses,  
+                "should": should_clauses,    
                 "minimum_should_match": 1 if not must_clauses else 0
             }
         }
